@@ -28,57 +28,56 @@ export default function Login() {
     }
   };
 
-  const inputClasses = "w-full px-4 py-3 bg-[#FAF7F2] border retro-border rounded-none focus:outline-none focus:bg-[#D0F0F0] transition-colors font-sans font-bold text-[#2A2522]";
-  const labelClasses = "block font-mono text-[10px] uppercase tracking-widest text-[#2A2522] font-bold mb-2";
-
   return (
-    <div className="min-h-screen flex items-center justify-center bg-[#D0F0F0] font-sans selection:bg-[#D9779B] selection:text-[#2A2522] px-6">
-      <div className="max-w-md w-full p-10 bg-white retro-border retro-shadow">
+    <div className="min-h-screen bg-[#FCF9F6] flex items-center justify-center p-6 font-sans selection:bg-[#E588A5] selection:text-white">
+      <div className="w-full max-w-md">
         <div className="text-center mb-10">
-          <img src="http://web2.itnahodinu.cz/uklid/logo.webp" alt="Logo" className="h-16 w-auto mx-auto mb-6" referrerPolicy="no-referrer" />
-          <h2 className="text-3xl font-serif text-[#2A2522] font-bold">Přihlášení</h2>
-          <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-[#D9779B] font-bold mt-2">Administrace</p>
+          <img src="http://web2.itnahodinu.cz/uklid/logo.webp" alt="Logo" className="h-24 w-auto mx-auto mb-6" referrerPolicy="no-referrer" />
+          <h1 className="text-3xl font-serif text-[#2D2825] mb-2">Přihlášení</h1>
+          <p className="font-sans text-xs uppercase tracking-widest text-[#E588A5] font-semibold">Administrace</p>
         </div>
         
-        {error && (
-          <div className="bg-[#D9779B] border retro-border text-[#2A2522] px-4 py-3 mb-6 font-mono text-xs uppercase tracking-widest text-center font-bold">
-            {error}
-          </div>
-        )}
-        
-        <form onSubmit={handleLogin} className="space-y-6">
-          <div>
-            <label className={labelClasses}>E-mail</label>
-            <input
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className={inputClasses}
-              required
-            />
-          </div>
-          <div>
-            <label className={labelClasses}>Heslo</label>
-            <input
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className={inputClasses}
-              required
-            />
-          </div>
-          <div className="pt-4">
-            <button
-              type="submit"
-              className="w-full bg-[#D9779B] text-[#2A2522] py-4 rounded-full font-mono text-xs uppercase tracking-[0.15em] font-bold retro-border retro-shadow-sm hover:bg-[#c9668a] transition-colors"
-            >
-              Přihlásit se
-            </button>
-          </div>
-        </form>
+        <div className="glass-card p-8 md:p-12">
+          {error && (
+            <div className="bg-red-50 text-red-600 p-4 rounded-xl mb-6 font-sans text-sm font-medium border border-red-100 text-center">
+              {error}
+            </div>
+          )}
+          
+          <form onSubmit={handleLogin} className="space-y-6">
+            <div>
+              <label className="block font-sans text-[10px] uppercase tracking-widest text-[#2D2825] font-semibold mb-2">E-mail (User Name)</label>
+              <input
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className="input-elegant"
+                required
+              />
+            </div>
+            <div>
+              <label className="block font-sans text-[10px] uppercase tracking-widest text-[#2D2825] font-semibold mb-2">Heslo</label>
+              <input
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className="input-elegant"
+                required
+              />
+            </div>
+            <div className="pt-4 flex justify-center">
+              <button
+                type="submit"
+                className="btn-gold-wrapper"
+              >
+                <span className="btn-pink-inner">Přihlásit se</span>
+              </button>
+            </div>
+          </form>
+        </div>
         
         <div className="mt-8 text-center">
-          <a href="/" className="font-mono text-[10px] uppercase tracking-widest text-[#2A2522] font-bold hover:text-[#D9779B] transition-colors border-b-2 border-transparent hover:border-[#D9779B]">
+          <a href="/" className="font-sans text-xs uppercase tracking-widest text-[#2D2825]/60 hover:text-[#E588A5] transition-colors font-semibold">
             &larr; Zpět na web
           </a>
         </div>
