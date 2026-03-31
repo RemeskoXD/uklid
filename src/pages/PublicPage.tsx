@@ -118,22 +118,22 @@ function Services() {
     {
       title: "Generální úklidy",
       desc: "Hloubkový úklid celého domova. Ideální na jaře, před svátky nebo po rekonstrukci. Zahrnuje mytí oken, čištění spár a kompletní dezinfekci.",
-      image: "https://picsum.photos/seed/generalcleaning/600/800"
+      image: "http://web2.itnahodinu.cz/uklid/gemenralniuklid.png"
     },
     {
       title: "Pravidelné úklidy",
       desc: "Udržování perfektní čistoty na týdenní nebo dvoutýdenní bázi. Vysávání, vytírání, utírání prachu, úklid koupelny a kuchyně.",
-      image: "https://picsum.photos/seed/regularcleaning/600/800"
+      image: "http://web2.itnahodinu.cz/uklid/pravidelneuklidy.jpeg"
     },
     {
       title: "Tepování",
       desc: "Hloubkové čištění sedacích souprav, koberců, matrací a čalouněných židlí profesionálním extraktorem. Odstraní skvrny a roztoče.",
-      image: "https://picsum.photos/seed/upholstery/600/800"
+      image: "http://web2.itnahodinu.cz/uklid/tepovani.png"
     },
     {
       title: "Parní čistič",
       desc: "Ekologické a vysoce efektivní čištění horkou párou. Ideální na spáry, koupelny, kuchyně a dezinfekci bez použití chemie.",
-      image: "https://picsum.photos/seed/steamclean/600/800"
+      image: "http://web2.itnahodinu.cz/uklid/parnicisteni.png"
     }
   ];
 
@@ -180,40 +180,54 @@ function Pricing() {
             <div className="flex items-end justify-between border-b border-[#D4AF37]/20 pb-4">
               <div>
                 <h4 className="text-2xl font-serif font-semibold text-[#2D2825]">Pravidelný úklid</h4>
-                <p className="font-sans text-[10px] text-[#2D2825]/60 uppercase tracking-widest mt-2 font-semibold">Cena za hodinu práce</p>
               </div>
-              <div className="text-2xl font-serif whitespace-nowrap text-[#E588A5]">od 450 Kč</div>
+              <div className="text-2xl font-serif whitespace-nowrap text-[#E588A5]">350 Kč / hod</div>
             </div>
             
-            <div className="flex items-end justify-between border-b border-[#D4AF37]/20 pb-4">
-              <div>
+            <div className="border-b border-[#D4AF37]/20 pb-4">
+              <div className="flex items-end justify-between mb-4">
                 <h4 className="text-2xl font-serif font-semibold text-[#2D2825]">Generální úklid</h4>
-                <p className="font-sans text-[10px] text-[#2D2825]/60 uppercase tracking-widest mt-2 font-semibold">Cena za hodinu práce</p>
+                <div className="text-2xl font-serif whitespace-nowrap text-[#E588A5]">390 Kč / hod</div>
               </div>
-              <div className="text-2xl font-serif whitespace-nowrap text-[#E588A5]">od 550 Kč</div>
+              <ul className="list-disc list-inside text-[#2D2825]/80 font-sans font-medium space-y-1 mb-4 ml-2">
+                <li>Mytí oken</li>
+                <li>Kuchyň uvnitř vč. spotřebičů</li>
+                <li>Spáry, obklady</li>
+                <li>Dveře, futra, topení</li>
+              </ul>
+              <div className="flex items-end justify-between mt-4 pt-4 border-t border-[#D4AF37]/10">
+                <p className="font-sans text-sm text-[#2D2825]/80 font-medium">+ Balíček prostředků, parní čistič a příslušenství na úklid</p>
+                <div className="text-xl font-serif whitespace-nowrap text-[#E588A5] ml-4">1290 Kč</div>
+              </div>
             </div>
             
             <div className="flex items-end justify-between border-b border-[#D4AF37]/20 pb-4">
               <div>
-                <h4 className="text-2xl font-serif font-semibold text-[#2D2825]">Tepování sedací soupravy</h4>
-                <p className="font-sans text-[10px] text-[#2D2825]/60 uppercase tracking-widest mt-2 font-semibold">Dle velikosti a znečištění</p>
+                <h4 className="text-2xl font-serif font-semibold text-[#2D2825]">Reorganizace domácnosti</h4>
               </div>
-              <div className="text-2xl font-serif whitespace-nowrap text-[#E588A5]">od 800 Kč</div>
+              <div className="text-2xl font-serif whitespace-nowrap text-[#E588A5]">350 Kč / hod</div>
+            </div>
+
+            <div className="flex items-end justify-between border-b border-[#D4AF37]/20 pb-4">
+              <div>
+                <h4 className="text-2xl font-serif font-semibold text-[#2D2825]">Tepování</h4>
+              </div>
+              <div className="text-2xl font-serif whitespace-nowrap text-[#E588A5]">1100 Kč / ks</div>
             </div>
             
             <div className="flex items-end justify-between border-b border-[#D4AF37]/20 pb-4">
               <div>
-                <h4 className="text-2xl font-serif font-semibold text-[#2D2825]">Čištění parním čističem</h4>
-                <p className="font-sans text-[10px] text-[#2D2825]/60 uppercase tracking-widest mt-2 font-semibold">Koupelny, kuchyně, spáry</p>
+                <h4 className="text-2xl font-serif font-semibold text-[#2D2825]">Doprava Praha</h4>
               </div>
-              <div className="text-2xl font-serif whitespace-nowrap text-[#E588A5]">od 600 Kč/h</div>
+              <div className="text-2xl font-serif whitespace-nowrap text-[#E588A5]">300 Kč</div>
             </div>
-          </div>
-          
-          <div className="mt-12 pt-8">
-            <p className="font-sans text-xs text-[#2D2825]/70 leading-relaxed text-center uppercase tracking-widest font-semibold">
-              Přesná cena se odvíjí od velikosti prostor a míry znečištění. Před každým úklidem vám ráda připravím individuální cenovou nabídku. Doprava po Praze 10 zdarma.
-            </p>
+
+            <div className="flex items-end justify-between border-b border-[#D4AF37]/20 pb-4">
+              <div>
+                <h4 className="text-2xl font-serif font-semibold text-[#2D2825]">Doprava mimo Prahu</h4>
+              </div>
+              <div className="text-2xl font-serif whitespace-nowrap text-[#E588A5]">500 Kč</div>
+            </div>
           </div>
         </div>
       </div>
@@ -222,6 +236,21 @@ function Pricing() {
 }
 
 function BeforeAfter() {
+  const comparisons = [
+    {
+      id: 1,
+      title: "Koupelna a sanita",
+      before: "http://web2.itnahodinu.cz/uklid/predumivadlo.jpeg",
+      after: "http://web2.itnahodinu.cz/uklid/poumivadlo.jpeg"
+    },
+    {
+      id: 2,
+      title: "Balkony a venkovní prostory",
+      before: "http://web2.itnahodinu.cz/uklid/predbalkon.jpeg",
+      after: "http://web2.itnahodinu.cz/uklid/poblakon.jpeg"
+    }
+  ];
+
   return (
     <section className="py-24 px-6 relative overflow-hidden">
       <div className="max-w-7xl mx-auto">
@@ -230,15 +259,22 @@ function BeforeAfter() {
           <h2 className="text-5xl md:text-6xl font-serif text-[#2D2825]">Před a Po</h2>
         </div>
         
-        <div className="grid md:grid-cols-2 gap-12 max-w-4xl mx-auto">
-          <div className="glass-card p-4 rotate-[-2deg] z-10 transition-transform hover:rotate-0 hover:z-30">
-            <img src="https://picsum.photos/seed/dirtykitchen/800/800" alt="Před úklidem" className="w-full aspect-square object-cover rounded-xl" referrerPolicy="no-referrer" />
-            <div className="mt-6 font-sans text-sm uppercase tracking-widest text-center font-semibold text-[#2D2825]">Stav Před</div>
-          </div>
-          <div className="glass-card p-4 rotate-[2deg] mt-12 md:mt-0 z-20 transition-transform hover:rotate-0 hover:z-30">
-            <img src="https://picsum.photos/seed/cleankitchen/800/800" alt="Po úklidu" className="w-full aspect-square object-cover rounded-xl" referrerPolicy="no-referrer" />
-            <div className="mt-6 font-sans text-sm uppercase tracking-widest text-center font-semibold text-[#2D2825]">Stav Po</div>
-          </div>
+        <div className="space-y-24 max-w-5xl mx-auto">
+          {comparisons.map((item) => (
+            <div key={item.id}>
+              <h3 className="text-2xl font-serif text-center text-[#2D2825] mb-10">{item.title}</h3>
+              <div className="grid md:grid-cols-2 gap-12">
+                <div className="glass-card p-4 rotate-[-2deg] z-10 transition-transform hover:rotate-0 hover:z-30">
+                  <img src={item.before} alt={`Před úklidem - ${item.title}`} className="w-full aspect-square object-cover rounded-xl" referrerPolicy="no-referrer" />
+                  <div className="mt-6 font-sans text-sm uppercase tracking-widest text-center font-semibold text-[#2D2825]">Stav Před</div>
+                </div>
+                <div className="glass-card p-4 rotate-[2deg] mt-12 md:mt-0 z-20 transition-transform hover:rotate-0 hover:z-30">
+                  <img src={item.after} alt={`Po úklidu - ${item.title}`} className="w-full aspect-square object-cover rounded-xl" referrerPolicy="no-referrer" />
+                  <div className="mt-6 font-sans text-sm uppercase tracking-widest text-center font-semibold text-[#2D2825]">Stav Po</div>
+                </div>
+              </div>
+            </div>
+          ))}
         </div>
       </div>
     </section>

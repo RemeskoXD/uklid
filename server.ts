@@ -106,6 +106,20 @@ async function startServer() {
     res.json(slots);
   });
 
+  app.get("/api/my-availability", authenticate, (req: any, res: any) => {
+    try {
+      const slots = db.prepare(`
+        SELECT id, date, time_slot, is_booked
+        FROM availability
+        WHERE user_id = ? AND date >= date('now')
+        ORDER BY date ASC, time_slot ASC
+      `).all(req.user.id);
+      res.json(slots);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch availability" });
+    }
+  });
+
   app.post("/api/availability", authenticate, (req: any, res: any) => {
     const { date, time_slot } = req.body;
     try {

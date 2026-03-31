@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router";
-import { format } from "date-fns";
+import { format, startOfWeek, addDays, isBefore, startOfDay } from "date-fns";
 import { cs } from "date-fns/locale";
-import { LogOut, Calendar, Users, ClipboardList, CheckCircle } from "lucide-react";
+import { LogOut, Calendar, Users, ClipboardList, CheckCircle, ChevronLeft, ChevronRight } from "lucide-react";
 
 export default function AdminDashboard() {
   const [user, setUser] = useState<any>(null);
@@ -344,8 +344,11 @@ function UsersView() {
 
 function AvailabilityView() {
   const [slots, setSlots] = useState<any[]>([]);
-  const [selectedDate, setSelectedDate] = useState(format(new Date(), "yyyy-MM-dd"));
-  const [timeSlot, setTimeSlot] = useState("08:00 - 12:00");
+  const [weekStart, setWeekStart] = useState(startOfWeek(new Date(), { weekStartsOn: 1 }));
+  const [customTimeDay, setCustomTimeDay] = useState<string | null>(null);
+  const [customStart, setCustomStart] = useState("08:00");
+  const [customEnd, setCustomEnd] = useState("16:00");
+  const [customType, setCustomType] = useState<"availability" | "break">("availability");
 
   const timeOptions = [
     "08:00 - 12:00",
@@ -359,105 +362,291 @@ function AvailabilityView() {
   }, []);
 
   const fetchAvailability = async () => {
-    const res = await fetch("/api/availability");
-    if (res.ok) {
-      const data = await res.json();
-      setSlots(data);
-    }
-  };
-
-  const handleAdd = async (e: React.FormEvent) => {
-    e.preventDefault();
-    const res = await fetch("/api/availability", {
-      method: "POST",
-      headers: { 
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${localStorage.getItem("token")}`
-      },
-      body: JSON.stringify({ date: selectedDate, time_slot: timeSlot })
-    });
-    if (res.ok) {
-      fetchAvailability();
-    }
-  };
-
-  const handleDelete = async (id: number) => {
-    const res = await fetch(`/api/availability/${id}`, {
-      method: "DELETE",
+    const res = await fetch("/api/my-availability", {
       headers: { Authorization: `Bearer ${localStorage.getItem("token")}` }
     });
     if (res.ok) {
-      fetchAvailability();
+      setSlots(await res.json());
     }
   };
 
-  const inputClasses = "w-full px-4 py-3 bg-[#FAF7F2] border retro-border rounded-none focus:outline-none focus:bg-[#D0F0F0] transition-colors font-sans font-bold text-[#2A2522]";
-  const labelClasses = "block font-mono text-[10px] uppercase tracking-widest text-[#2A2522] font-bold mb-2";
+  const toggleSlot = async (dateStr: string, timeSlot: string) => {
+    const existingSlot = slots.find(s => s.date === dateStr && s.time_slot === timeSlot);
+    
+    if (existingSlot) {
+      // Delete
+      const res = await fetch(`/api/availability/${existingSlot.id}`, {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${localStorage.getItem("token")}` }
+      });
+      if (res.ok) fetchAvailability();
+    } else {
+      // Add
+      const res = await fetch("/api/availability", {
+        method: "POST",
+        headers: { 
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${localStorage.getItem("token")}`
+        },
+        body: JSON.stringify({ date: dateStr, time_slot: timeSlot })
+      });
+      if (res.ok) fetchAvailability();
+    }
+  };
+
+  const handleAddCustom = async (dateStr: string) => {
+    if (!customStart || !customEnd) return;
+    
+    if (customStart >= customEnd) {
+      alert("Konec musí být po začátku.");
+      return;
+    }
+
+    if (customType === "availability") {
+      const timeSlot = `${customStart} - ${customEnd}`;
+      
+      // Check if already exists
+      if (slots.find(s => s.date === dateStr && s.time_slot === timeSlot)) {
+        setCustomTimeDay(null);
+        return;
+      }
+
+      const res = await fetch("/api/availability", {
+        method: "POST",
+        headers: { 
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${localStorage.getItem("token")}`
+        },
+        body: JSON.stringify({ date: dateStr, time_slot: timeSlot })
+      });
+      if (res.ok) {
+        fetchAvailability();
+        setCustomTimeDay(null);
+        setCustomStart("08:00");
+        setCustomEnd("16:00");
+      }
+    } else if (customType === "break") {
+      const bStart = customStart;
+      const bEnd = customEnd;
+      const daySlots = slots.filter(s => s.date === dateStr);
+      let changed = false;
+
+      for (const slot of daySlots) {
+        // Parse the slot times using regex to handle formats like "Celý den (08:00 - 20:00)"
+        const match = slot.time_slot.match(/(\d{2}:\d{2})\s*-\s*(\d{2}:\d{2})/);
+        if (!match) continue;
+        
+        const sStart = match[1];
+        const sEnd = match[2];
+        
+        // Check for overlap
+        if (bStart < sEnd && bEnd > sStart) {
+          changed = true;
+          // 1. Delete the original slot
+          await fetch(`/api/availability/${slot.id}`, {
+            method: "DELETE",
+            headers: { Authorization: `Bearer ${localStorage.getItem("token")}` }
+          });
+          
+          // 2. Create left part if needed
+          if (sStart < bStart) {
+            await fetch("/api/availability", {
+              method: "POST",
+              headers: { 
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${localStorage.getItem("token")}`
+              },
+              body: JSON.stringify({ date: dateStr, time_slot: `${sStart} - ${bStart}` })
+            });
+          }
+          
+          // 3. Create right part if needed
+          if (bEnd < sEnd) {
+            await fetch("/api/availability", {
+              method: "POST",
+              headers: { 
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${localStorage.getItem("token")}`
+              },
+              body: JSON.stringify({ date: dateStr, time_slot: `${bEnd} - ${sEnd}` })
+            });
+          }
+        }
+      }
+      
+      if (changed) {
+        fetchAvailability();
+      }
+      setCustomTimeDay(null);
+      setCustomStart("08:00");
+      setCustomEnd("16:00");
+      setCustomType("availability");
+    }
+  };
+
+  const days = Array.from({ length: 14 }).map((_, i) => addDays(weekStart, i));
+  const today = startOfDay(new Date());
 
   return (
-    <div className="max-w-4xl mx-auto">
+    <div className="max-w-5xl mx-auto">
       <div className="mb-12">
         <span className="font-mono text-xs font-bold uppercase tracking-[0.2em] mb-2 block text-[#D9779B]">Plánování</span>
         <h1 className="text-4xl md:text-5xl font-serif text-[#2A2522] font-bold">Moje dostupnost</h1>
+        <p className="mt-4 font-sans text-gray-600 font-medium">Vyberte dny a časy, kdy můžete pracovat. Kliknutím na časový blok jej přidáte nebo odeberete. Pro přidání přestávky použijte tlačítko "+ Vlastní čas / Přestávka" a zvolte záložku "Přestávka", systém automaticky rozdělí vaši pracovní dobu.</p>
       </div>
       
-      <div className="bg-white p-8 md:p-12 retro-border retro-shadow mb-12">
-        <h2 className="text-2xl font-serif mb-8 font-bold text-[#2A2522]">Přidat volný termín</h2>
-        <form onSubmit={handleAdd} className="flex flex-col md:flex-row gap-6 items-end">
-          <div className="flex-1 w-full">
-            <label className={labelClasses}>Datum</label>
-            <input 
-              type="date" 
-              value={selectedDate} 
-              onChange={e => setSelectedDate(e.target.value)} 
-              min={format(new Date(), "yyyy-MM-dd")}
-              className={inputClasses} 
-              required 
-            />
-          </div>
-          <div className="flex-1 w-full">
-            <label className={labelClasses}>Čas</label>
-            <select 
-              value={timeSlot} 
-              onChange={e => setTimeSlot(e.target.value)} 
-              className={`${inputClasses} appearance-none`}
-            >
-              {timeOptions.map(t => <option key={t} value={t}>{t}</option>)}
-            </select>
-          </div>
-          <button type="submit" className="w-full md:w-auto bg-[#D9779B] text-[#2A2522] px-8 py-3 rounded-full font-mono text-xs uppercase tracking-[0.15em] font-bold retro-border retro-shadow-sm hover:bg-[#c9668a] transition-colors h-[48px]">
-            Přidat
+      <div className="bg-white retro-border retro-shadow overflow-hidden mb-12">
+        <div className="p-6 border-b retro-border bg-[#D0F0F0] flex items-center justify-between">
+          <button 
+            onClick={() => setWeekStart(addDays(weekStart, -7))}
+            className="p-2 hover:bg-white rounded-full transition-colors retro-border bg-white"
+          >
+            <ChevronLeft className="w-5 h-5 text-[#2A2522]" />
           </button>
-        </form>
-      </div>
-
-      <div className="bg-white retro-border retro-shadow overflow-hidden">
-        <div className="p-6 border-b retro-border bg-[#D0F0F0]">
-          <h3 className="font-mono text-[10px] uppercase tracking-widest text-[#2A2522] font-bold">Vypsané volné termíny</h3>
+          <h3 className="font-mono text-sm uppercase tracking-widest text-[#2A2522] font-bold text-center">
+            {format(weekStart, "d. MMMM", { locale: cs })} - {format(addDays(weekStart, 13), "d. MMMM yyyy", { locale: cs })}
+          </h3>
+          <button 
+            onClick={() => setWeekStart(addDays(weekStart, 7))}
+            className="p-2 hover:bg-white rounded-full transition-colors retro-border bg-white"
+          >
+            <ChevronRight className="w-5 h-5 text-[#2A2522]" />
+          </button>
         </div>
-        <ul className="divide-y-3 divide-[#2A2522]">
-          {slots.length === 0 ? (
-            <li className="p-12 text-center">
-              <p className="font-sans text-[#2A2522] font-bold mb-2">Zatím nemáte vypsané žádné volné termíny.</p>
-              <p className="font-mono text-[10px] uppercase tracking-widest text-gray-500 font-bold">Přidejte je pomocí formuláře výše.</p>
-            </li>
-          ) : (
-            slots.map(slot => (
-              <li key={slot.id} className="p-6 flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 hover:bg-[#FAF7F2] transition-colors">
-                <div>
-                  <div className="font-serif text-xl text-[#2A2522] mb-1 font-bold">{format(new Date(slot.date), "EEEE, d. MMMM yyyy", { locale: cs })}</div>
-                  <div className="font-mono text-xs text-[#D9779B] uppercase tracking-widest font-bold">{slot.time_slot}</div>
+        
+        <div className="divide-y-3 divide-[#2A2522]">
+          {days.map(day => {
+            const dateStr = format(day, "yyyy-MM-dd");
+            const isPast = isBefore(day, today);
+            const isToday = format(day, "yyyy-MM-dd") === format(today, "yyyy-MM-dd");
+            
+            const daySlots = slots.filter(s => s.date === dateStr);
+            const customSlots = daySlots.filter(s => !timeOptions.includes(s.time_slot));
+            
+            return (
+              <div key={dateStr} className={`p-6 flex flex-col md:flex-row md:items-start gap-6 ${isPast ? 'bg-gray-50 opacity-60' : 'hover:bg-[#FAF7F2]'} transition-colors`}>
+                <div className="md:w-48 shrink-0 pt-2">
+                  <div className="flex items-center gap-2">
+                    <div className="font-serif text-xl text-[#2A2522] font-bold">
+                      {format(day, "EEEE", { locale: cs })}
+                    </div>
+                    {isToday && <span className="bg-[#D9779B] text-white text-[8px] px-2 py-0.5 rounded-full font-mono uppercase tracking-widest font-bold">Dnes</span>}
+                  </div>
+                  <div className="font-mono text-xs text-gray-500 uppercase tracking-widest font-bold mt-1">
+                    {format(day, "d. M. yyyy")}
+                  </div>
                 </div>
-                <button 
-                  onClick={() => handleDelete(slot.id)}
-                  className="self-start sm:self-auto border retro-border bg-white text-[#2A2522] hover:bg-[#D9779B] font-mono text-[10px] uppercase tracking-widest font-bold px-4 py-2 rounded-full retro-shadow-sm transition-colors"
-                >
-                  Smazat
-                </button>
-              </li>
-            ))
-          )}
-        </ul>
+                
+                <div className="flex-1 flex flex-wrap gap-3">
+                  {timeOptions.map(time => {
+                    const slot = daySlots.find(s => s.time_slot === time);
+                    const isSelected = !!slot;
+                    const isBooked = slot?.is_booked === 1;
+                    
+                    return (
+                      <button
+                        key={time}
+                        disabled={isPast || isBooked}
+                        onClick={() => toggleSlot(dateStr, time)}
+                        className={`
+                          relative px-4 py-3 rounded-xl font-mono text-[10px] uppercase tracking-widest font-bold transition-all border-2
+                          ${isSelected 
+                            ? isBooked 
+                              ? 'bg-[#2A2522] text-white border-[#2A2522] cursor-not-allowed' 
+                              : 'bg-[#D9779B] text-white border-[#D9779B] hover:bg-[#c9668a] hover:border-[#c9668a] retro-shadow-sm'
+                            : 'bg-white text-[#2A2522] border-[#D4AF37]/30 hover:border-[#D9779B] hover:text-[#D9779B]'
+                          }
+                          ${isPast && !isSelected ? 'cursor-not-allowed opacity-50' : ''}
+                        `}
+                      >
+                        {time}
+                        {isBooked && <span className="absolute -top-2 -right-2 bg-[#D4B886] text-[#2A2522] text-[8px] px-2 py-1 rounded-full border retro-border">Obsazeno</span>}
+                      </button>
+                    );
+                  })}
+
+                  {customSlots.map(slot => {
+                    const isBooked = slot.is_booked === 1;
+                    return (
+                      <button
+                        key={slot.id}
+                        disabled={isPast || isBooked}
+                        onClick={() => toggleSlot(dateStr, slot.time_slot)}
+                        className={`
+                          relative px-4 py-3 rounded-xl font-mono text-[10px] uppercase tracking-widest font-bold transition-all border-2
+                          ${isBooked 
+                            ? 'bg-[#2A2522] text-white border-[#2A2522] cursor-not-allowed' 
+                            : 'bg-[#D9779B] text-white border-[#D9779B] hover:bg-[#c9668a] hover:border-[#c9668a] retro-shadow-sm'
+                          }
+                        `}
+                      >
+                        {slot.time_slot}
+                        {isBooked && <span className="absolute -top-2 -right-2 bg-[#D4B886] text-[#2A2522] text-[8px] px-2 py-1 rounded-full border retro-border">Obsazeno</span>}
+                      </button>
+                    );
+                  })}
+
+                  {!isPast && (
+                    customTimeDay === dateStr ? (
+                      <div className="flex flex-col gap-2 bg-[#D0F0F0] p-3 rounded-xl border retro-border retro-shadow-sm w-full max-w-sm">
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={() => setCustomType("availability")}
+                            className={`flex-1 py-1.5 rounded-lg font-mono text-[10px] uppercase tracking-widest font-bold border retro-border transition-colors ${customType === "availability" ? "bg-[#D9779B] text-white" : "bg-white text-[#2A2522]"}`}
+                          >
+                            Dostupnost
+                          </button>
+                          <button
+                            onClick={() => setCustomType("break")}
+                            className={`flex-1 py-1.5 rounded-lg font-mono text-[10px] uppercase tracking-widest font-bold border retro-border transition-colors ${customType === "break" ? "bg-[#D4B886] text-[#2A2522]" : "bg-white text-[#2A2522]"}`}
+                          >
+                            Přestávka
+                          </button>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <input 
+                            type="time" 
+                            value={customStart} 
+                            onChange={e => setCustomStart(e.target.value)} 
+                            className="flex-1 bg-white border retro-border px-2 py-1.5 text-xs font-mono focus:outline-none rounded-lg" 
+                          />
+                          <span className="font-bold text-[#2A2522]">-</span>
+                          <input 
+                            type="time" 
+                            value={customEnd} 
+                            onChange={e => setCustomEnd(e.target.value)} 
+                            className="flex-1 bg-white border retro-border px-2 py-1.5 text-xs font-mono focus:outline-none rounded-lg" 
+                          />
+                        </div>
+                        <div className="flex items-center gap-2 mt-1">
+                          <button 
+                            onClick={() => handleAddCustom(dateStr)} 
+                            className="flex-1 bg-[#2A2522] text-white py-1.5 rounded-lg text-[10px] uppercase tracking-widest font-bold retro-border hover:bg-black transition-colors"
+                          >
+                            Přidat
+                          </button>
+                          <button 
+                            onClick={() => setCustomTimeDay(null)} 
+                            className="px-3 py-1.5 bg-white text-[#2A2522] rounded-lg text-[10px] uppercase tracking-widest font-bold retro-border hover:bg-gray-50 transition-colors"
+                          >
+                            Zrušit
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <button 
+                        onClick={() => setCustomTimeDay(dateStr)} 
+                        className="px-4 py-3 rounded-xl font-mono text-[10px] uppercase tracking-widest font-bold border-2 border-dashed border-[#2A2522]/30 text-[#2A2522]/60 hover:border-[#D9779B] hover:text-[#D9779B] transition-colors"
+                      >
+                        + Vlastní čas / Přestávka
+                      </button>
+                    )
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
       </div>
     </div>
   );
