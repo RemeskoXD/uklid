@@ -333,6 +333,24 @@ async function startServer() {
     }
   });
 
+  app.put("/api/orders/:id/internal-note", authenticate, async (req: any, res: any) => {
+    try {
+      const { internal_note } = req.body;
+      const order = db.prepare("SELECT * FROM orders WHERE id = ?").get(req.params.id) as any;
+      if (!order) return res.status(404).json({ error: "Order not found" });
+
+      if (req.user.role !== "admin" && order.claimed_by_user_id !== req.user.id) {
+        return res.status(403).json({ error: "Forbidden" });
+      }
+
+      db.prepare("UPDATE orders SET internal_note = ? WHERE id = ?").run(internal_note, req.params.id);
+      res.json({ success: true });
+    } catch (error) {
+      console.error(error);
+      res.status(500).json({ error: "Failed to update internal note" });
+    }
+  });
+
   // Vite middleware for development
   if (process.env.NODE_ENV !== "production") {
     const vite = await createViteServer({

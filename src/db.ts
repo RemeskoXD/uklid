@@ -57,6 +57,7 @@ db.exec(`
 try { db.exec("ALTER TABLE users ADD COLUMN priority INTEGER DEFAULT 1"); } catch (e) {}
 try { db.exec("ALTER TABLE users ADD COLUMN has_car INTEGER DEFAULT 0"); } catch (e) {}
 try { db.exec("ALTER TABLE orders ADD COLUMN note TEXT"); } catch (e) {}
+try { db.exec("ALTER TABLE orders ADD COLUMN internal_note TEXT"); } catch (e) {}
 
 // Migrate old statuses
 try {

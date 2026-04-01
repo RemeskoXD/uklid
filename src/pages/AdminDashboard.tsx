@@ -100,6 +100,8 @@ function OrdersView({ user }: { user: any }) {
   const [orders, setOrders] = useState<any[]>([]);
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [sortOrder, setSortOrder] = useState<"newest" | "oldest">("newest");
+  const [editingNoteId, setEditingNoteId] = useState<number | null>(null);
+  const [internalNoteText, setInternalNoteText] = useState("");
 
   useEffect(() => {
     fetchOrders();
@@ -134,6 +136,21 @@ function OrdersView({ user }: { user: any }) {
       body: JSON.stringify({ status })
     });
     if (res.ok) {
+      fetchOrders();
+    }
+  };
+
+  const handleSaveInternalNote = async (id: number) => {
+    const res = await fetch(`/api/orders/${id}/internal-note`, {
+      method: "PUT",
+      headers: { 
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${localStorage.getItem("token")}` 
+      },
+      body: JSON.stringify({ internal_note: internalNoteText })
+    });
+    if (res.ok) {
+      setEditingNoteId(null);
       fetchOrders();
     }
   };
@@ -221,10 +238,39 @@ function OrdersView({ user }: { user: any }) {
                       <div className="text-sm text-gray-700 font-sans font-medium">{order.address}</div>
                       {order.note && (
                         <div className="mt-3 p-3 bg-[#FCF9F6] border border-[#D4B886]/30 rounded text-sm font-sans text-[#2A2522]">
-                          <strong className="font-mono text-[10px] uppercase tracking-widest text-[#D9779B] block mb-1">Poznámka:</strong>
+                          <strong className="font-mono text-[10px] uppercase tracking-widest text-[#D9779B] block mb-1">Poznámka zákazníka:</strong>
                           {order.note}
                         </div>
                       )}
+                      <div className="mt-3 p-3 bg-gray-50 border border-gray-200 rounded text-sm font-sans text-[#2A2522]">
+                        <div className="flex justify-between items-center mb-1">
+                          <strong className="font-mono text-[10px] uppercase tracking-widest text-gray-500 block">Interní poznámka:</strong>
+                          {(user.role === "admin" || order.claimed_by_user_id === user.id) && editingNoteId !== order.id && (
+                            <button 
+                              onClick={() => { setEditingNoteId(order.id); setInternalNoteText(order.internal_note || ""); }} 
+                              className="text-xs text-[#D9779B] hover:underline font-semibold"
+                            >
+                              Upravit
+                            </button>
+                          )}
+                        </div>
+                        {editingNoteId === order.id ? (
+                          <div className="mt-2">
+                            <textarea
+                              value={internalNoteText}
+                              onChange={(e) => setInternalNoteText(e.target.value)}
+                              className="w-full border border-gray-300 rounded p-2 text-sm focus:outline-none focus:border-[#D9779B] min-h-[60px]"
+                              placeholder="Napište si poznámku k objednávce..."
+                            />
+                            <div className="flex gap-2 mt-2">
+                              <button onClick={() => handleSaveInternalNote(order.id)} className="bg-[#D9779B] text-white px-3 py-1 text-xs rounded hover:bg-[#c26284] transition-colors">Uložit</button>
+                              <button onClick={() => setEditingNoteId(null)} className="bg-gray-200 text-gray-700 px-3 py-1 text-xs rounded hover:bg-gray-300 transition-colors">Zrušit</button>
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="whitespace-pre-wrap">{order.internal_note || <span className="text-gray-400 italic">Žádná interní poznámka</span>}</div>
+                        )}
+                      </div>
                     </td>
                     <td className="p-6">
                       <span className="inline-block border retro-border px-3 py-1 bg-white font-mono text-xs uppercase tracking-widest font-bold text-[#2A2522]">
