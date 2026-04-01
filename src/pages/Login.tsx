@@ -15,7 +15,14 @@ export default function Login() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, password }),
       });
-      const data = await res.json();
+      
+      let data;
+      try {
+        data = await res.json();
+      } catch (parseErr) {
+        throw new Error(`Server returned ${res.status} ${res.statusText}. Is the backend running?`);
+      }
+
       if (res.ok) {
         localStorage.setItem("token", data.token);
         localStorage.setItem("user", JSON.stringify(data.user));
@@ -23,8 +30,8 @@ export default function Login() {
       } else {
         setError(data.error || "Login failed");
       }
-    } catch (err) {
-      setError("An error occurred");
+    } catch (err: any) {
+      setError(err.message || "An error occurred while connecting to the server");
     }
   };
 
