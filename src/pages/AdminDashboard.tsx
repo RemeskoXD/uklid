@@ -47,13 +47,22 @@ export default function AdminDashboard() {
             Objednávky
           </button>
           {user.role === "admin" && (
-            <button
-              onClick={() => setActiveTab("users")}
-              className={`w-full flex items-center gap-4 px-6 py-4 rounded-full font-mono text-xs uppercase tracking-[0.15em] font-bold transition-colors ${activeTab === "users" ? "bg-[#D9779B] text-[#2A2522] retro-border retro-shadow-sm" : "bg-white text-[#2A2522] hover:bg-[#D4B886] retro-border"}`}
-            >
-              <Users className="w-4 h-4" />
-              Uživatelé
-            </button>
+            <>
+              <button
+                onClick={() => setActiveTab("users")}
+                className={`w-full flex items-center gap-4 px-6 py-4 rounded-full font-mono text-xs uppercase tracking-[0.15em] font-bold transition-colors ${activeTab === "users" ? "bg-[#D9779B] text-[#2A2522] retro-border retro-shadow-sm" : "bg-white text-[#2A2522] hover:bg-[#D4B886] retro-border"}`}
+              >
+                <Users className="w-4 h-4" />
+                Uživatelé
+              </button>
+              <button
+                onClick={() => setActiveTab("admin-availability")}
+                className={`w-full flex items-center gap-4 px-6 py-4 rounded-full font-mono text-xs uppercase tracking-[0.15em] font-bold transition-colors ${activeTab === "admin-availability" ? "bg-[#D9779B] text-[#2A2522] retro-border retro-shadow-sm" : "bg-white text-[#2A2522] hover:bg-[#D4B886] retro-border"}`}
+              >
+                <Calendar className="w-4 h-4" />
+                Směny
+              </button>
+            </>
           )}
           {user.role === "cleaner" && (
             <button
@@ -80,6 +89,7 @@ export default function AdminDashboard() {
       <main className="flex-1 p-6 md:p-12 overflow-auto">
         {activeTab === "orders" && <OrdersView user={user} />}
         {activeTab === "users" && user.role === "admin" && <UsersView />}
+        {activeTab === "admin-availability" && user.role === "admin" && <AdminAvailabilityView />}
         {activeTab === "availability" && user.role === "cleaner" && <AvailabilityView />}
       </main>
     </div>
@@ -336,6 +346,353 @@ function UsersView() {
               ))}
             </tbody>
           </table>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function AdminAvailabilityView() {
+  const [slots, setSlots] = useState<any[]>([]);
+  const [users, setUsers] = useState<any[]>([]);
+  const [weekStart, setWeekStart] = useState(startOfWeek(new Date(), { weekStartsOn: 1 }));
+  const [selectedUserId, setSelectedUserId] = useState<number | "all">("all");
+  const [customTimeDay, setCustomTimeDay] = useState<string | null>(null);
+  const [customStart, setCustomStart] = useState("08:00");
+  const [customEnd, setCustomEnd] = useState("16:00");
+  const [customType, setCustomType] = useState<"availability" | "break">("availability");
+
+  const timeOptions = [
+    "08:00 - 12:00",
+    "12:00 - 16:00",
+    "16:00 - 20:00",
+    "Celý den (08:00 - 20:00)"
+  ];
+
+  useEffect(() => {
+    fetchUsers();
+    fetchAvailability();
+  }, []);
+
+  const fetchUsers = async () => {
+    const res = await fetch("/api/users", {
+      headers: { Authorization: `Bearer ${localStorage.getItem("token")}` }
+    });
+    if (res.ok) {
+      const data = await res.json();
+      setUsers(data.filter((u: any) => u.role === "cleaner"));
+    }
+  };
+
+  const fetchAvailability = async () => {
+    const res = await fetch("/api/admin/availability", {
+      headers: { Authorization: `Bearer ${localStorage.getItem("token")}` }
+    });
+    if (res.ok) {
+      setSlots(await res.json());
+    }
+  };
+
+  const toggleSlot = async (dateStr: string, timeSlot: string, userId: number) => {
+    const existingSlot = slots.find(s => s.date === dateStr && s.time_slot === timeSlot && s.user_id === userId);
+    
+    if (existingSlot) {
+      // Delete
+      const res = await fetch(`/api/admin/availability/${existingSlot.id}`, {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${localStorage.getItem("token")}` }
+      });
+      if (res.ok) fetchAvailability();
+    } else {
+      // Add
+      const res = await fetch("/api/admin/availability", {
+        method: "POST",
+        headers: { 
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${localStorage.getItem("token")}`
+        },
+        body: JSON.stringify({ user_id: userId, date: dateStr, time_slot: timeSlot })
+      });
+      if (res.ok) fetchAvailability();
+    }
+  };
+
+  const handleAddCustom = async (dateStr: string, userId: number) => {
+    if (!customStart || !customEnd) return;
+    
+    if (customStart >= customEnd) {
+      alert("Konec musí být po začátku.");
+      return;
+    }
+
+    if (customType === "availability") {
+      const timeSlot = `${customStart} - ${customEnd}`;
+      
+      if (slots.find(s => s.date === dateStr && s.time_slot === timeSlot && s.user_id === userId)) {
+        setCustomTimeDay(null);
+        return;
+      }
+
+      const res = await fetch("/api/admin/availability", {
+        method: "POST",
+        headers: { 
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${localStorage.getItem("token")}`
+        },
+        body: JSON.stringify({ user_id: userId, date: dateStr, time_slot: timeSlot })
+      });
+      if (res.ok) {
+        fetchAvailability();
+        setCustomTimeDay(null);
+        setCustomStart("08:00");
+        setCustomEnd("16:00");
+      }
+    } else if (customType === "break") {
+      const bStart = customStart;
+      const bEnd = customEnd;
+      const daySlots = slots.filter(s => s.date === dateStr && s.user_id === userId);
+      let changed = false;
+
+      for (const slot of daySlots) {
+        const match = slot.time_slot.match(/(\d{2}:\d{2})\s*-\s*(\d{2}:\d{2})/);
+        if (!match) continue;
+        
+        const sStart = match[1];
+        const sEnd = match[2];
+        
+        if (bStart < sEnd && bEnd > sStart) {
+          changed = true;
+          await fetch(`/api/admin/availability/${slot.id}`, {
+            method: "DELETE",
+            headers: { Authorization: `Bearer ${localStorage.getItem("token")}` }
+          });
+          
+          if (sStart < bStart) {
+            await fetch("/api/admin/availability", {
+              method: "POST",
+              headers: { 
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${localStorage.getItem("token")}`
+              },
+              body: JSON.stringify({ user_id: userId, date: dateStr, time_slot: `${sStart} - ${bStart}` })
+            });
+          }
+          
+          if (bEnd < sEnd) {
+            await fetch("/api/admin/availability", {
+              method: "POST",
+              headers: { 
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${localStorage.getItem("token")}`
+              },
+              body: JSON.stringify({ user_id: userId, date: dateStr, time_slot: `${bEnd} - ${sEnd}` })
+            });
+          }
+        }
+      }
+      
+      if (changed) {
+        fetchAvailability();
+      }
+      setCustomTimeDay(null);
+      setCustomStart("08:00");
+      setCustomEnd("16:00");
+      setCustomType("availability");
+    }
+  };
+
+  const days = Array.from({ length: 14 }).map((_, i) => addDays(weekStart, i));
+  const today = startOfDay(new Date());
+  
+  const displayedUsers = selectedUserId === "all" ? users : users.filter(u => u.id === selectedUserId);
+
+  return (
+    <div className="max-w-6xl mx-auto">
+      <div className="mb-12 flex flex-col md:flex-row md:items-end justify-between gap-6">
+        <div>
+          <span className="font-mono text-xs font-bold uppercase tracking-[0.2em] mb-2 block text-[#D9779B]">Plánování</span>
+          <h1 className="text-4xl md:text-5xl font-serif text-[#2A2522] font-bold">Směny pracovníků</h1>
+        </div>
+        <div className="w-full md:w-64">
+          <label className="block font-mono text-[10px] uppercase tracking-widest text-[#2A2522] font-bold mb-2">Filtrovat pracovníka</label>
+          <select 
+            value={selectedUserId} 
+            onChange={(e) => setSelectedUserId(e.target.value === "all" ? "all" : Number(e.target.value))}
+            className="w-full px-4 py-3 bg-white border retro-border rounded-none focus:outline-none focus:bg-[#D0F0F0] transition-colors font-sans font-bold text-[#2A2522] appearance-none"
+          >
+            <option value="all">Všichni pracovníci</option>
+            {users.map(u => (
+              <option key={u.id} value={u.id}>{u.name}</option>
+            ))}
+          </select>
+        </div>
+      </div>
+      
+      <div className="bg-white retro-border retro-shadow overflow-hidden mb-12">
+        <div className="p-6 border-b retro-border bg-[#D0F0F0] flex items-center justify-between">
+          <button 
+            onClick={() => setWeekStart(addDays(weekStart, -7))}
+            className="p-2 hover:bg-white rounded-full transition-colors retro-border bg-white"
+          >
+            <ChevronLeft className="w-5 h-5 text-[#2A2522]" />
+          </button>
+          <h3 className="font-mono text-sm uppercase tracking-widest text-[#2A2522] font-bold text-center">
+            {format(weekStart, "d. MMMM", { locale: cs })} - {format(addDays(weekStart, 13), "d. MMMM yyyy", { locale: cs })}
+          </h3>
+          <button 
+            onClick={() => setWeekStart(addDays(weekStart, 7))}
+            className="p-2 hover:bg-white rounded-full transition-colors retro-border bg-white"
+          >
+            <ChevronRight className="w-5 h-5 text-[#2A2522]" />
+          </button>
+        </div>
+        
+        <div className="divide-y-3 divide-[#2A2522]">
+          {days.map(day => {
+            const dateStr = format(day, "yyyy-MM-dd");
+            const isPast = isBefore(day, today);
+            const isToday = format(day, "yyyy-MM-dd") === format(today, "yyyy-MM-dd");
+            
+            return (
+              <div key={dateStr} className={`p-6 flex flex-col lg:flex-row lg:items-start gap-6 ${isPast ? 'bg-gray-50 opacity-60' : 'hover:bg-[#FAF7F2]'} transition-colors`}>
+                <div className="lg:w-48 shrink-0 pt-2">
+                  <div className="flex items-center gap-2">
+                    <div className="font-serif text-xl text-[#2A2522] font-bold">
+                      {format(day, "EEEE", { locale: cs })}
+                    </div>
+                    {isToday && <span className="bg-[#D9779B] text-white text-[8px] px-2 py-0.5 rounded-full font-mono uppercase tracking-widest font-bold">Dnes</span>}
+                  </div>
+                  <div className="font-mono text-xs text-gray-500 uppercase tracking-widest font-bold mt-1">
+                    {format(day, "d. M. yyyy")}
+                  </div>
+                </div>
+                
+                <div className="flex-1 flex flex-col gap-6">
+                  {displayedUsers.length === 0 && (
+                    <div className="text-sm text-gray-500 font-mono">Žádní pracovníci k zobrazení.</div>
+                  )}
+                  {displayedUsers.map(u => {
+                    const userSlots = slots.filter(s => s.date === dateStr && s.user_id === u.id);
+                    const customSlots = userSlots.filter(s => !timeOptions.includes(s.time_slot));
+                    
+                    return (
+                      <div key={u.id} className="flex flex-col md:flex-row md:items-start gap-4 border-l-4 border-[#D0F0F0] pl-4">
+                        <div className="md:w-32 shrink-0 pt-2 font-sans font-bold text-[#2A2522] text-sm">
+                          {u.name}
+                        </div>
+                        <div className="flex-1 flex flex-wrap gap-2">
+                          {timeOptions.map(time => {
+                            const slot = userSlots.find(s => s.time_slot === time);
+                            const isSelected = !!slot;
+                            const isBooked = slot?.is_booked === 1;
+                            
+                            return (
+                              <button
+                                key={time}
+                                disabled={isPast || isBooked}
+                                onClick={() => toggleSlot(dateStr, time, u.id)}
+                                className={`
+                                  relative px-3 py-2 rounded-lg font-mono text-[10px] uppercase tracking-widest font-bold transition-all border-2
+                                  ${isSelected 
+                                    ? isBooked 
+                                      ? 'bg-[#2A2522] text-white border-[#2A2522] cursor-not-allowed' 
+                                      : 'bg-[#D9779B] text-white border-[#D9779B] hover:bg-[#c9668a] hover:border-[#c9668a] retro-shadow-sm'
+                                    : 'bg-white text-[#2A2522] border-[#D4AF37]/30 hover:border-[#D9779B] hover:text-[#D9779B]'
+                                  }
+                                  ${isPast && !isSelected ? 'cursor-not-allowed opacity-50' : ''}
+                                `}
+                              >
+                                {time}
+                                {isBooked && <span className="absolute -top-2 -right-2 bg-[#D4B886] text-[#2A2522] text-[8px] px-2 py-1 rounded-full border retro-border">Obsazeno</span>}
+                              </button>
+                            );
+                          })}
+
+                          {customSlots.map(slot => {
+                            const isBooked = slot.is_booked === 1;
+                            return (
+                              <button
+                                key={slot.id}
+                                disabled={isPast || isBooked}
+                                onClick={() => toggleSlot(dateStr, slot.time_slot, u.id)}
+                                className={`
+                                  relative px-3 py-2 rounded-lg font-mono text-[10px] uppercase tracking-widest font-bold transition-all border-2
+                                  ${isBooked 
+                                    ? 'bg-[#2A2522] text-white border-[#2A2522] cursor-not-allowed' 
+                                    : 'bg-[#D9779B] text-white border-[#D9779B] hover:bg-[#c9668a] hover:border-[#c9668a] retro-shadow-sm'
+                                  }
+                                `}
+                              >
+                                {slot.time_slot}
+                                {isBooked && <span className="absolute -top-2 -right-2 bg-[#D4B886] text-[#2A2522] text-[8px] px-2 py-1 rounded-full border retro-border">Obsazeno</span>}
+                              </button>
+                            );
+                          })}
+
+                          {!isPast && (
+                            customTimeDay === `${dateStr}-${u.id}` ? (
+                              <div className="flex flex-col gap-2 bg-[#D0F0F0] p-2 rounded-lg border retro-border retro-shadow-sm w-full max-w-xs">
+                                <div className="flex items-center gap-1">
+                                  <button
+                                    onClick={() => setCustomType("availability")}
+                                    className={`flex-1 py-1 rounded font-mono text-[8px] uppercase tracking-widest font-bold border retro-border transition-colors ${customType === "availability" ? "bg-[#D9779B] text-white" : "bg-white text-[#2A2522]"}`}
+                                  >
+                                    Dostupnost
+                                  </button>
+                                  <button
+                                    onClick={() => setCustomType("break")}
+                                    className={`flex-1 py-1 rounded font-mono text-[8px] uppercase tracking-widest font-bold border retro-border transition-colors ${customType === "break" ? "bg-[#D4B886] text-[#2A2522]" : "bg-white text-[#2A2522]"}`}
+                                  >
+                                    Přestávka
+                                  </button>
+                                </div>
+                                <div className="flex items-center gap-1">
+                                  <input 
+                                    type="time" 
+                                    value={customStart} 
+                                    onChange={e => setCustomStart(e.target.value)} 
+                                    className="flex-1 bg-white border retro-border px-1 py-1 text-[10px] font-mono focus:outline-none rounded" 
+                                  />
+                                  <span className="font-bold text-[#2A2522]">-</span>
+                                  <input 
+                                    type="time" 
+                                    value={customEnd} 
+                                    onChange={e => setCustomEnd(e.target.value)} 
+                                    className="flex-1 bg-white border retro-border px-1 py-1 text-[10px] font-mono focus:outline-none rounded" 
+                                  />
+                                </div>
+                                <div className="flex items-center gap-1 mt-1">
+                                  <button 
+                                    onClick={() => handleAddCustom(dateStr, u.id)} 
+                                    className="flex-1 bg-[#2A2522] text-white py-1 rounded text-[8px] uppercase tracking-widest font-bold retro-border hover:bg-black transition-colors"
+                                  >
+                                    Přidat
+                                  </button>
+                                  <button 
+                                    onClick={() => setCustomTimeDay(null)} 
+                                    className="px-2 py-1 bg-white text-[#2A2522] rounded text-[8px] uppercase tracking-widest font-bold retro-border hover:bg-gray-50 transition-colors"
+                                  >
+                                    Zrušit
+                                  </button>
+                                </div>
+                              </div>
+                            ) : (
+                              <button 
+                                onClick={() => setCustomTimeDay(`${dateStr}-${u.id}`)} 
+                                className="px-3 py-2 rounded-lg font-mono text-[10px] uppercase tracking-widest font-bold border-2 border-dashed border-[#2A2522]/30 text-[#2A2522]/60 hover:border-[#D9779B] hover:text-[#D9779B] transition-colors"
+                              >
+                                + Vlastní
+                              </button>
+                            )
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            );
+          })}
         </div>
       </div>
     </div>

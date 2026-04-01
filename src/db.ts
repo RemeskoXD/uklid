@@ -50,15 +50,22 @@ db.exec(`
 try { db.exec("ALTER TABLE users ADD COLUMN priority INTEGER DEFAULT 1"); } catch (e) {}
 try { db.exec("ALTER TABLE users ADD COLUMN has_car INTEGER DEFAULT 0"); } catch (e) {}
 
-// Create default admin if not exists
+// Create or update default admin
 const adminExists = db.prepare("SELECT * FROM users WHERE role = 'admin'").get();
+const hashedPassword = bcrypt.hashSync('DelphiaUklid2026.', 10);
+
 if (!adminExists) {
-  const hashedPassword = bcrypt.hashSync('admin123', 10);
   db.prepare("INSERT INTO users (name, email, password, role) VALUES (?, ?, ?, ?)").run(
     'Admin',
-    'admin@boziuklid.cz',
+    'info@docistaskacou.cz',
     hashedPassword,
     'admin'
   );
-  console.log('Default admin created: admin@boziuklid.cz / admin123');
+  console.log('Default admin created: info@docistaskacou.cz / DelphiaUklid2026.');
+} else {
+  db.prepare("UPDATE users SET email = ?, password = ? WHERE role = 'admin'").run(
+    'info@docistaskacou.cz',
+    hashedPassword
+  );
+  console.log('Admin credentials updated: info@docistaskacou.cz');
 }

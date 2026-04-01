@@ -139,6 +139,43 @@ async function startServer() {
     }
   });
 
+  // Admin Availability Routes
+  app.get("/api/admin/availability", authenticate, (req: any, res: any) => {
+    if (req.user.role !== "admin") return res.status(403).json({ error: "Forbidden" });
+    try {
+      const slots = db.prepare(`
+        SELECT a.id, a.date, a.time_slot, a.is_booked, u.name as user_name, u.id as user_id
+        FROM availability a
+        JOIN users u ON a.user_id = u.id
+        ORDER BY a.date ASC, a.time_slot ASC
+      `).all();
+      res.json(slots);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch all availability" });
+    }
+  });
+
+  app.post("/api/admin/availability", authenticate, (req: any, res: any) => {
+    if (req.user.role !== "admin") return res.status(403).json({ error: "Forbidden" });
+    const { user_id, date, time_slot } = req.body;
+    try {
+      const result = db.prepare("INSERT INTO availability (user_id, date, time_slot) VALUES (?, ?, ?)").run(user_id, date, time_slot);
+      res.json({ id: result.lastInsertRowid, user_id, date, time_slot, is_booked: 0 });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to add availability" });
+    }
+  });
+
+  app.delete("/api/admin/availability/:id", authenticate, (req: any, res: any) => {
+    if (req.user.role !== "admin") return res.status(403).json({ error: "Forbidden" });
+    try {
+      db.prepare("DELETE FROM availability WHERE id = ?").run(req.params.id);
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to delete availability" });
+    }
+  });
+
   // Orders Routes
   app.post("/api/orders", (req, res) => {
     const { name, email, phone, address, date, time_slot, service_type } = req.body;
@@ -217,6 +254,13 @@ async function startServer() {
       appType: "spa",
     });
     app.use(vite.middlewares);
+  } else {
+    const path = await import("path");
+    const distPath = path.join(process.cwd(), "dist");
+    app.use(express.static(distPath));
+    app.get("*", (req, res) => {
+      res.sendFile(path.join(distPath, "index.html"));
+    });
   }
 
   app.listen(PORT, "0.0.0.0", () => {
