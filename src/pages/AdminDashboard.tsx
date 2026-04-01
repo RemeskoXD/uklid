@@ -98,6 +98,8 @@ export default function AdminDashboard() {
 
 function OrdersView({ user }: { user: any }) {
   const [orders, setOrders] = useState<any[]>([]);
+  const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [sortOrder, setSortOrder] = useState<"newest" | "oldest">("newest");
 
   useEffect(() => {
     fetchOrders();
@@ -122,15 +124,77 @@ function OrdersView({ user }: { user: any }) {
     }
   };
 
+  const handleStatusChange = async (id: number, status: string) => {
+    const res = await fetch(`/api/orders/${id}/status`, {
+      method: "PUT",
+      headers: { 
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${localStorage.getItem("token")}` 
+      },
+      body: JSON.stringify({ status })
+    });
+    if (res.ok) {
+      fetchOrders();
+    }
+  };
+
+  const filteredOrders = orders
+    .filter(o => statusFilter === "all" || o.status === statusFilter)
+    .sort((a, b) => {
+      const dateA = new Date(a.created_at).getTime();
+      const dateB = new Date(b.created_at).getTime();
+      return sortOrder === "newest" ? dateB - dateA : dateA - dateB;
+    });
+
+  const getStatusBadge = (status: string) => {
+    switch(status) {
+      case 'new': return <span className="inline-flex items-center px-3 py-1 border retro-border font-mono text-[10px] uppercase tracking-widest font-bold bg-[#D0F0F0] text-[#2A2522]">Nové</span>;
+      case 'confirmed': return <span className="inline-flex items-center px-3 py-1 border retro-border font-mono text-[10px] uppercase tracking-widest font-bold bg-[#D9779B] text-white">Potvrzeno</span>;
+      case 'done': return <span className="inline-flex items-center px-3 py-1 border retro-border font-mono text-[10px] uppercase tracking-widest font-bold bg-[#D4B886] text-[#2A2522]">Hotovo</span>;
+      case 'cancelled': return <span className="inline-flex items-center px-3 py-1 border retro-border font-mono text-[10px] uppercase tracking-widest font-bold bg-gray-300 text-gray-700">Storno</span>;
+      default: return <span className="inline-flex items-center px-3 py-1 border retro-border font-mono text-[10px] uppercase tracking-widest font-bold bg-gray-100 text-gray-800">{status}</span>;
+    }
+  };
+
   return (
     <div className="max-w-6xl mx-auto">
-      <div className="mb-12">
-        <span className="font-mono text-xs font-bold uppercase tracking-[0.2em] mb-2 block text-[#D9779B]">Přehled</span>
-        <h1 className="text-4xl md:text-5xl font-serif text-[#2A2522] font-bold">Objednávky</h1>
+      <div className="mb-8 flex flex-col md:flex-row md:items-end justify-between gap-4">
+        <div>
+          <span className="font-mono text-xs font-bold uppercase tracking-[0.2em] mb-2 block text-[#D9779B]">Přehled</span>
+          <h1 className="text-4xl md:text-5xl font-serif text-[#2A2522] font-bold">Objednávky</h1>
+        </div>
+        
+        <div className="flex flex-col sm:flex-row gap-4">
+          <div>
+            <label className="block font-mono text-[10px] uppercase tracking-widest text-[#2A2522] font-bold mb-1">Stav</label>
+            <select 
+              value={statusFilter} 
+              onChange={e => setStatusFilter(e.target.value)}
+              className="bg-white border retro-border px-3 py-2 text-sm font-sans focus:outline-none rounded-none"
+            >
+              <option value="all">Všechny</option>
+              <option value="new">Nové</option>
+              <option value="confirmed">Potvrzeno</option>
+              <option value="done">Hotovo</option>
+              <option value="cancelled">Storno</option>
+            </select>
+          </div>
+          <div>
+            <label className="block font-mono text-[10px] uppercase tracking-widest text-[#2A2522] font-bold mb-1">Řazení</label>
+            <select 
+              value={sortOrder} 
+              onChange={e => setSortOrder(e.target.value as any)}
+              className="bg-white border retro-border px-3 py-2 text-sm font-sans focus:outline-none rounded-none"
+            >
+              <option value="newest">Nejnovější</option>
+              <option value="oldest">Nejstarší</option>
+            </select>
+          </div>
+        </div>
       </div>
       
       <div className="bg-white retro-border retro-shadow overflow-hidden">
-        {orders.length === 0 ? (
+        {filteredOrders.length === 0 ? (
           <div className="p-12 text-center">
             <p className="font-sans text-[#2A2522] font-bold mb-2">Zatím žádné objednávky.</p>
             <p className="font-mono text-[10px] uppercase tracking-widest text-gray-500 font-bold">Až přijdou, objeví se zde.</p>
@@ -148,13 +212,19 @@ function OrdersView({ user }: { user: any }) {
                 </tr>
               </thead>
               <tbody className="divide-y-3 divide-[#2A2522]">
-                {orders.map((order) => (
+                {filteredOrders.map((order) => (
                   <tr key={order.id} className="hover:bg-[#FAF7F2] transition-colors">
                     <td className="p-6">
                       <div className="font-serif text-lg text-[#2A2522] mb-1 font-bold">{order.name}</div>
                       <div className="font-mono text-xs text-[#2A2522] mb-1 font-bold">{order.email}</div>
                       <div className="font-mono text-xs text-[#2A2522] mb-2 font-bold">{order.phone}</div>
                       <div className="text-sm text-gray-700 font-sans font-medium">{order.address}</div>
+                      {order.note && (
+                        <div className="mt-3 p-3 bg-[#FCF9F6] border border-[#D4B886]/30 rounded text-sm font-sans text-[#2A2522]">
+                          <strong className="font-mono text-[10px] uppercase tracking-widest text-[#D9779B] block mb-1">Poznámka:</strong>
+                          {order.note}
+                        </div>
+                      )}
                     </td>
                     <td className="p-6">
                       <span className="inline-block border retro-border px-3 py-1 bg-white font-mono text-xs uppercase tracking-widest font-bold text-[#2A2522]">
@@ -166,25 +236,53 @@ function OrdersView({ user }: { user: any }) {
                       <div className="font-mono text-xs text-[#D9779B] uppercase tracking-widest font-bold">{order.time_slot}</div>
                     </td>
                     <td className="p-6">
-                      <span className={`inline-flex items-center px-3 py-1 border retro-border font-mono text-[10px] uppercase tracking-widest font-bold ${
-                        order.status === 'claimed' ? 'bg-[#D9779B] text-[#2A2522]' : 'bg-[#D0F0F0] text-[#2A2522]'
-                      }`}>
-                        {order.status === 'claimed' ? 'Přiřazeno' : 'Čeká'}
-                      </span>
+                      {getStatusBadge(order.status)}
                     </td>
                     <td className="p-6">
-                      {user.role === "cleaner" && order.status === "pending" && (
-                        <button
-                          onClick={() => handleClaim(order.id)}
-                          className="flex items-center gap-2 bg-[#D4B886] retro-border text-[#2A2522] px-4 py-2 rounded-full font-mono text-[10px] uppercase tracking-widest font-bold hover:bg-[#D9779B] retro-shadow-sm transition-colors"
-                        >
-                          <CheckCircle className="w-3 h-3" />
-                          Vzít si
-                        </button>
-                      )}
-                      {order.status === "claimed" && order.claimed_by_user_id === user.id && (
-                        <span className="font-mono text-[10px] uppercase tracking-widest text-[#D9779B] font-bold border-b-2 border-[#D9779B] pb-1">Moje zakázka</span>
-                      )}
+                      <div className="flex flex-col gap-2">
+                        {user.role === "cleaner" && order.status === "new" && (
+                          <button
+                            onClick={() => handleClaim(order.id)}
+                            className="flex items-center justify-center gap-2 bg-[#D4B886] retro-border text-[#2A2522] px-4 py-2 rounded-full font-mono text-[10px] uppercase tracking-widest font-bold hover:bg-[#D9779B] hover:text-white retro-shadow-sm transition-colors"
+                          >
+                            <CheckCircle className="w-3 h-3" />
+                            Vzít si
+                          </button>
+                        )}
+                        
+                        {(user.role === "admin" || (user.role === "cleaner" && order.claimed_by_user_id === user.id)) && (
+                          <>
+                            {order.status === "new" && user.role === "admin" && (
+                              <button
+                                onClick={() => handleStatusChange(order.id, 'confirmed')}
+                                className="bg-[#D9779B] text-white retro-border px-3 py-1.5 font-mono text-[10px] uppercase tracking-widest font-bold hover:bg-[#c26284] transition-colors"
+                              >
+                                Potvrdit
+                              </button>
+                            )}
+                            {(order.status === "new" || order.status === "confirmed") && (
+                              <button
+                                onClick={() => handleStatusChange(order.id, 'done')}
+                                className="bg-[#D4B886] text-[#2A2522] retro-border px-3 py-1.5 font-mono text-[10px] uppercase tracking-widest font-bold hover:bg-[#c2a673] transition-colors"
+                              >
+                                Hotovo
+                              </button>
+                            )}
+                            {order.status !== "cancelled" && order.status !== "done" && (
+                              <button
+                                onClick={() => {
+                                  if (window.confirm('Opravdu chcete stornovat tuto objednávku? Zákazníkovi bude odeslán e-mail.')) {
+                                    handleStatusChange(order.id, 'cancelled');
+                                  }
+                                }}
+                                className="bg-white text-red-600 border border-red-200 px-3 py-1.5 font-mono text-[10px] uppercase tracking-widest font-bold hover:bg-red-50 transition-colors"
+                              >
+                                Storno
+                              </button>
+                            )}
+                          </>
+                        )}
+                      </div>
                     </td>
                   </tr>
                 ))}

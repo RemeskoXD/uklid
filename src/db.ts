@@ -47,7 +47,7 @@ db.exec(`
     service_type TEXT NOT NULL,
     date TEXT NOT NULL,
     time_slot TEXT NOT NULL,
-    status TEXT DEFAULT 'pending',
+    status TEXT DEFAULT 'new',
     claimed_by_user_id INTEGER,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (claimed_by_user_id) REFERENCES users (id)
@@ -56,6 +56,13 @@ db.exec(`
 
 try { db.exec("ALTER TABLE users ADD COLUMN priority INTEGER DEFAULT 1"); } catch (e) {}
 try { db.exec("ALTER TABLE users ADD COLUMN has_car INTEGER DEFAULT 0"); } catch (e) {}
+try { db.exec("ALTER TABLE orders ADD COLUMN note TEXT"); } catch (e) {}
+
+// Migrate old statuses
+try {
+  db.exec("UPDATE orders SET status = 'new' WHERE status = 'pending'");
+  db.exec("UPDATE orders SET status = 'confirmed' WHERE status = 'claimed'");
+} catch (e) {}
 
 // Create or update default admin
 const adminExists = db.prepare("SELECT * FROM users WHERE role = 'admin'").get();

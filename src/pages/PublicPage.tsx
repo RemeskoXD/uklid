@@ -284,7 +284,7 @@ function BeforeAfter() {
 function BookingSection() {
   const [step, setStep] = useState(1);
   const [formData, setFormData] = useState({
-    name: "", email: "", phone: "", address: "", service_type: "Pravidelný úklid", date: "", time_slot: ""
+    name: "", email: "", phone: "", address: "", service_type: "Pravidelný úklid", date: "", time_slot: "", note: ""
   });
   const [availableSlots, setAvailableSlots] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
@@ -346,7 +346,7 @@ function BookingSection() {
             <h3 className="text-3xl font-serif mb-4 text-[#2D2825]">Děkujeme za rezervaci!</h3>
             <p className="text-[#2D2825]/80 mb-10 font-sans font-medium">Vaše objednávka byla úspěšně přijata. Brzy se vám ozveme pro potvrzení detailů.</p>
             <button 
-              onClick={() => { setSuccess(false); setStep(1); setFormData({name: "", email: "", phone: "", address: "", service_type: "Pravidelný úklid", date: "", time_slot: ""}); }}
+              onClick={() => { setSuccess(false); setStep(1); setFormData({name: "", email: "", phone: "", address: "", service_type: "Pravidelný úklid", date: "", time_slot: "", note: ""}); }}
               className="btn-gold-wrapper"
             >
               <span className="btn-pink-inner">Nová rezervace</span>
@@ -389,6 +389,15 @@ function BookingSection() {
                     <option value="Tepování">Tepování</option>
                     <option value="Parní čistič">Parní čistič</option>
                   </select>
+                </div>
+                <div>
+                  <label className={labelClasses}>Poznámka (volitelné)</label>
+                  <textarea 
+                    value={formData.note} 
+                    onChange={e => setFormData({...formData, note: e.target.value})} 
+                    className="input-elegant min-h-[100px] resize-y" 
+                    placeholder="Máte nějaké speciální požadavky?"
+                  />
                 </div>
                 <div className="pt-8 flex justify-center">
                   <button type="submit" className="btn-gold-wrapper">

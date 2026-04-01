@@ -3,8 +3,64 @@ import { createServer as createViteServer } from "vite";
 import { db } from "./src/db.js";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
+import nodemailer from "nodemailer";
 
 const JWT_SECRET = process.env.JWT_SECRET || "super-secret-key-for-dev";
+
+// Configure nodemailer
+const transporter = nodemailer.createTransport({
+  host: process.env.SMTP_HOST || "smtp.ethereal.email",
+  port: parseInt(process.env.SMTP_PORT || "587"),
+  auth: {
+    user: process.env.SMTP_USER || "test",
+    pass: process.env.SMTP_PASS || "test",
+  },
+});
+
+async function sendOrderEmail(order: any, status: string) {
+  if (!process.env.SMTP_HOST) {
+    console.log(`[EMAIL MOCK] Would send email to ${order.email} for order ${order.id} with status ${status}`);
+    return;
+  }
+
+  const statusText = status === 'confirmed' ? 'POTVRZENA' : 'ZAMÍTNUTA / STORNOVÁNA';
+  const color = status === 'confirmed' ? '#D9779B' : '#666666';
+
+  const html = `
+    <div style="font-family: sans-serif; max-w: 600px; margin: 0 auto; padding: 20px; border: 1px solid #eee; border-radius: 10px;">
+      <div style="text-align: center; margin-bottom: 20px;">
+        <h1 style="color: #2D2825; font-family: serif;">Dočista s Káčou</h1>
+        <p style="color: ${color}; font-weight: bold; letter-spacing: 2px; text-transform: uppercase;">Vaše objednávka byla ${statusText}</p>
+      </div>
+      <div style="background: #FCF9F6; padding: 20px; border-radius: 8px; margin-bottom: 20px;">
+        <p><strong>Služba:</strong> ${order.service_type}</p>
+        <p><strong>Datum:</strong> ${order.date}</p>
+        <p><strong>Čas:</strong> ${order.time_slot}</p>
+        <p><strong>Adresa:</strong> ${order.address}</p>
+      </div>
+      <p style="color: #2D2825; line-height: 1.6;">
+        ${status === 'confirmed' 
+          ? 'Těšíme se na vás! Náš pracovník dorazí ve smluvený čas na uvedenou adresu.' 
+          : 'Omlouváme se, ale vaši objednávku jsme museli zrušit. Pro více informací nás prosím kontaktujte telefonicky.'}
+      </p>
+      <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #eee; font-size: 12px; color: #888; text-align: center;">
+        Tento e-mail je generován automaticky, prosím neodpovídejte na něj.
+      </div>
+    </div>
+  `;
+
+  try {
+    await transporter.sendMail({
+      from: '"Dočista s Káčou" <info@docistaskacou.cz>',
+      to: order.email,
+      subject: `Objednávka úklidu - ${statusText}`,
+      html,
+    });
+    console.log(`Email sent to ${order.email} for order ${order.id}`);
+  } catch (error) {
+    console.error("Failed to send email:", error);
+  }
+}
 
 async function startServer() {
   const app = express();
@@ -178,7 +234,7 @@ async function startServer() {
 
   // Orders Routes
   app.post("/api/orders", (req, res) => {
-    const { name, email, phone, address, date, time_slot, service_type } = req.body;
+    const { name, email, phone, address, date, time_slot, service_type, note } = req.body;
     const needsCar = !address.toLowerCase().includes("praha") ? 1 : 0;
 
     try {
@@ -193,21 +249,22 @@ async function startServer() {
       `).get(date, time_slot, needsCar) as any;
 
       let claimed_by = null;
-      let status = 'pending';
+      let status = 'new';
 
       if (bestSlot) {
         claimed_by = bestSlot.user_id;
-        status = 'claimed';
+        status = 'confirmed';
         db.prepare("UPDATE availability SET is_booked = 1 WHERE id = ?").run(bestSlot.availability_id);
       }
 
       const result = db.prepare(`
-        INSERT INTO orders (name, email, phone, address, date, time_slot, service_type, status, claimed_by_user_id)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-      `).run(name, email, phone, address, date, time_slot, service_type, status, claimed_by);
+        INSERT INTO orders (name, email, phone, address, date, time_slot, service_type, status, claimed_by_user_id, note)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `).run(name, email, phone, address, date, time_slot, service_type, status, claimed_by, note || null);
 
       res.json({ id: result.lastInsertRowid, success: true });
     } catch (error) {
+      console.error(error);
       res.status(500).json({ error: "Failed to create order" });
     }
   });
@@ -222,7 +279,7 @@ async function startServer() {
         orders = db.prepare(`
           SELECT o.* FROM orders o
           WHERE o.claimed_by_user_id = ? 
-          OR (o.status = 'pending' AND EXISTS (
+          OR (o.status = 'new' AND EXISTS (
             SELECT 1 FROM availability a WHERE a.user_id = ? AND a.date = o.date AND a.time_slot = o.time_slot
           ))
           ORDER BY o.created_at DESC
@@ -230,6 +287,7 @@ async function startServer() {
       }
       res.json(orders);
     } catch (error) {
+      console.error(error);
       res.status(500).json({ error: "Failed to fetch orders" });
     }
   });
@@ -238,12 +296,40 @@ async function startServer() {
     try {
       const order = db.prepare("SELECT * FROM orders WHERE id = ?").get(req.params.id) as any;
       if (!order) return res.status(404).json({ error: "Order not found" });
-      if (order.status !== "pending") return res.status(400).json({ error: "Order already claimed" });
+      if (order.status !== "new") return res.status(400).json({ error: "Order already claimed" });
 
-      db.prepare("UPDATE orders SET status = 'claimed', claimed_by_user_id = ? WHERE id = ?").run(req.user.id, req.params.id);
+      db.prepare("UPDATE orders SET status = 'confirmed', claimed_by_user_id = ? WHERE id = ?").run(req.user.id, req.params.id);
+      
+      // Send email on claim (confirmation)
+      sendOrderEmail(order, 'confirmed').catch(console.error);
+
       res.json({ success: true });
     } catch (error) {
+      console.error(error);
       res.status(500).json({ error: "Failed to claim order" });
+    }
+  });
+
+  app.put("/api/orders/:id/status", authenticate, async (req: any, res: any) => {
+    try {
+      const { status } = req.body;
+      const order = db.prepare("SELECT * FROM orders WHERE id = ?").get(req.params.id) as any;
+      if (!order) return res.status(404).json({ error: "Order not found" });
+
+      if (req.user.role !== "admin" && order.claimed_by_user_id !== req.user.id) {
+        return res.status(403).json({ error: "Forbidden" });
+      }
+
+      db.prepare("UPDATE orders SET status = ? WHERE id = ?").run(status, req.params.id);
+
+      if (status === 'confirmed' || status === 'cancelled') {
+        await sendOrderEmail(order, status);
+      }
+
+      res.json({ success: true });
+    } catch (error) {
+      console.error(error);
+      res.status(500).json({ error: "Failed to update status" });
     }
   });
 
