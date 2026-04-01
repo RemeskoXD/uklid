@@ -27,11 +27,11 @@ function Navbar() {
           <span className="font-script text-3xl text-[#E588A5] hidden sm:block">Dočista s Káčou</span>
         </div>
         <div className="hidden md:flex items-center gap-8 font-sans text-xs font-semibold tracking-widest uppercase text-[#2D2825]">
-          <a href="#o-nas" className="hover:text-[#E588A5] transition-colors">O mně</a>
-          <a href="#sluzby" className="hover:text-[#E588A5] transition-colors">Služby</a>
-          <a href="#cenik" className="hover:text-[#E588A5] transition-colors">Ceník</a>
+          <a href="#o-nas" className="hover:text-[#E588A5] transition-colors whitespace-nowrap">O mně</a>
+          <a href="#sluzby" className="hover:text-[#E588A5] transition-colors whitespace-nowrap">Služby</a>
+          <a href="#cenik" className="hover:text-[#E588A5] transition-colors whitespace-nowrap">Ceník</a>
           <a href="#rezervace" className="btn-gold-wrapper" style={{ maxWidth: '160px' }}>
-            <span className="btn-pink-inner" style={{ padding: '0.75rem 1.5rem', fontSize: '0.75rem' }}>Rezervovat</span>
+            <span className="btn-pink-inner whitespace-nowrap" style={{ padding: '0.75rem 1.5rem', fontSize: '0.75rem' }}>Rezervovat</span>
           </a>
         </div>
       </div>
