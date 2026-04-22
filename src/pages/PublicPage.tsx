@@ -23,7 +23,7 @@ function Navbar() {
     <nav className="fixed top-0 left-0 right-0 bg-[#FCF9F6]/90 backdrop-blur-md z-50 border-b border-[#D4AF37]/20">
       <div className="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
         <div className="flex items-center gap-4">
-          <img src="http://web2.itnahodinu.cz/uklid/logo.webp" alt="Dočista s Káčou Logo" className="h-12 w-auto object-contain" referrerPolicy="no-referrer" />
+          <img src="https://web2.itnahodinu.cz/uklid/logo3.jpeg" alt="Dočista s Káčou Logo" className="h-12 w-auto object-contain" referrerPolicy="no-referrer" />
           <span className="font-script text-3xl text-[#E588A5] hidden sm:block">Dočista s Káčou</span>
         </div>
         <div className="hidden md:flex items-center gap-8 font-sans text-xs font-semibold tracking-widest uppercase text-[#2D2825]">
@@ -45,7 +45,7 @@ function Hero() {
       <div className="max-w-3xl mx-auto z-10 flex flex-col items-center">
         
         <div className="mb-8">
-          <img src="http://web2.itnahodinu.cz/uklid/logo.webp" alt="Dočista s Káčou" className="h-48 md:h-64 w-auto object-contain mx-auto" referrerPolicy="no-referrer" />
+          <img src="https://web2.itnahodinu.cz/uklid/logo1.jpeg" alt="Dočista s Káčou" className="h-48 md:h-64 w-auto object-contain mx-auto" referrerPolicy="no-referrer" />
         </div>
 
         <div className="badge-gold mb-10">

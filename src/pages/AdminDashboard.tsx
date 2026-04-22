@@ -32,7 +32,7 @@ export default function AdminDashboard() {
       {/* Sidebar */}
       <aside className="w-full md:w-72 bg-[#D0F0F0] border-r retro-border flex flex-col z-10">
         <div className="p-8 border-b retro-border text-center bg-white">
-          <img src="http://web2.itnahodinu.cz/uklid/logo.webp" alt="Logo" className="h-12 w-auto mx-auto mb-4" referrerPolicy="no-referrer" />
+          <img src="https://web2.itnahodinu.cz/uklid/logo1.jpeg" alt="Logo" className="h-12 w-auto mx-auto mb-4" referrerPolicy="no-referrer" />
           <h2 className="text-xl font-serif text-[#2A2522] tracking-tight font-bold">Dočista s Káčou</h2>
           <p className="font-mono text-[10px] uppercase tracking-[0.15em] text-[#D9779B] font-bold mt-2">
             {user.name} <br/> ({user.role === 'admin' ? 'Administrátor' : 'Pracovník'})

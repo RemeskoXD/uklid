@@ -39,7 +39,7 @@ export default function Login() {
     <div className="min-h-screen bg-[#FCF9F6] flex items-center justify-center p-6 font-sans selection:bg-[#E588A5] selection:text-white">
       <div className="w-full max-w-md">
         <div className="text-center mb-10">
-          <img src="http://web2.itnahodinu.cz/uklid/logo.webp" alt="Logo" className="h-24 w-auto mx-auto mb-6" referrerPolicy="no-referrer" />
+          <img src="https://web2.itnahodinu.cz/uklid/logo1.jpeg" alt="Logo" className="h-24 w-auto mx-auto mb-6" referrerPolicy="no-referrer" />
           <h1 className="text-3xl font-serif text-[#2D2825] mb-2">Přihlášení</h1>
           <p className="font-sans text-xs uppercase tracking-widest text-[#E588A5] font-semibold">Administrace</p>
         </div>
